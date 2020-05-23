@@ -3,6 +3,10 @@ package com.erey.simpleyelp
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import android.widget.Button
+import android.widget.LinearLayout
+import androidx.recyclerview.widget.LinearLayoutManager
+import kotlinx.android.synthetic.main.activity_main.*
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -20,20 +24,41 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        val restaurants = mutableListOf<YelpRestaurant>()
+        val adapter= RestaurantsAdapter(this, restaurants)
+        rvRestaurants.adapter = adapter
+        rvRestaurants.layoutManager = LinearLayoutManager(this)
+
         val retrofit =
                 Retrofit.Builder().baseUrl(BASE_URL).addConverterFactory(GsonConverterFactory.create())
                 .build()
-        val yelpService = retrofit.create(YelpService::class.java)
-        yelpService.searchRestaurants("Bearer $API_KEY", "Avocado Toast", "New York").enqueue(object : Callback<Any> {
-            override fun onFailure(call: Call<Any>, t: Throwable) {
-                Log.i(TAG, "$t")
-            }
+        val yelpService :YelpService = retrofit.create(YelpService::class.java)
 
-            override fun onResponse(call: Call<Any>, response: Response<Any>) {
-                Log.i(TAG, "$response")
+        button.setOnClickListener {
+            val query : String = searchBar.text.toString()
+            yelpService.searchRestaurants("Bearer $API_KEY", query, "New York").enqueue(object : Callback<YelpSearchResult> {
 
-            }
-        })
+                override fun onFailure(call: Call<YelpSearchResult>, t: Throwable) {
+                    Log.i(TAG, "$t")
+                }
+
+                override fun onResponse(call: Call<YelpSearchResult>, response: Response<YelpSearchResult>) {
+                    Log.i(TAG, "$response")
+                    val body = response.body()
+                    if (body == null) {
+                        Log.w(TAG, "Did not receive valid response from Yelp API... exiting")
+                        return
+                    }
+                    restaurants.addAll(body.restaurants)
+                    adapter.notifyDataSetChanged()
+                }
+            })
+        }
+    }
+
+    fun doYelpSearch(query: String, yelpService : YelpService, adapter : RestaurantsAdapter){
 
     }
 }
+
+
